@@ -4,9 +4,19 @@ class Day7 {
     val bidRegex = Regex("\\d+")
     val handRegex = Regex("(\\d|[A-Z])+")
 
+    val handMap = mapOf(
+        1 to "Highcard",
+        2 to "One pair",
+        3 to "Two pair",
+        4 to "Three of a kind",
+        5 to "Fullhouse",
+        6 to "Four of a kind",
+        7 to "Five of a kind"
+    )
+
     val valueMap = mapOf (
         'T' to 10,
-        'J' to 11,
+        'J' to 1,
         'Q' to 12,
         'K' to 13,
         'A' to 14
@@ -92,8 +102,21 @@ class Day7 {
         return result
     }
 
+    val allPossibleValues = mutableListOf<Char>()
+        .apply { this.addAll((2..9).map { it.toString().toCharArray()[0] })}
+        .apply { this.addAll(valueMap.keys.filter { it != 'J' }) }
+
+    fun getTheFissaTM2(hand: String):Int {
+        var bestValue = getTheFissaTM(hand)
+        allPossibleValues.forEach { newChar ->
+            val newValue = getTheFissaTM(hand.replace('J', newChar))
+            if (newValue > bestValue) bestValue = newValue
+        }
+        return bestValue
+    }
+
     fun doTheOtherThing(): Long {
-        val inputs = Day7::class.java.getResourceAsStream("/day7/test.txt").bufferedReader().readLines()
+        val inputs = Day7::class.java.getResourceAsStream("/day7/input.txt").bufferedReader().readLines()
         val bidToHand = inputs.map { input ->
             val split = input.split(" ")
             val bid = bidRegex.findAll(split[1]).map { it.groupValues }.flatten().toList()[0].toLong()
@@ -104,7 +127,7 @@ class Day7 {
         val result = bidToHand
             .sortedWith (object : Comparator <Pair<Long, String>> {
                 override fun compare (p0: Pair<Long, String>, pi: Pair<Long, String>) : Int {
-                    val diff = getTheFissaTM(p0.second) - getTheFissaTM(pi.second)
+                    val diff = getTheFissaTM2(p0.second) - getTheFissaTM2(pi.second)
                     return if (diff != 0) {
                         diff
                     } else {
@@ -113,15 +136,14 @@ class Day7 {
                 }
             })
             .mapIndexed { index, pair ->
-                println("$pair * ${index + 1}")
+                println("(${pair.second}, ${pair.first})")
                 pair.first * (index + 1)
             }
             .sum()
-        println(result)
         return result
     }
 }
 
 fun main() {
-    println(Day7().doTheThing())
+    println(Day7().doTheOtherThing())
 }
