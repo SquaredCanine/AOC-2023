@@ -12,7 +12,7 @@ class Day9 {
         return result.toList()
     }
 
-    fun expand(numbers: List<List<Long>>, resolver: (List<List<Long>>) -> Long): List<Long> {
+    fun expandAndSum(numbers: List<List<Long>>, resolver: (List<Long>, List<List<Long>>) -> Long): Long {
         return numbers.map {
             var latest = it
             val expanded = mutableListOf<List<Long>>()
@@ -23,56 +23,36 @@ class Day9 {
                 }
                 expanded.add(latest)
             }
-            resolver.invoke(expanded)
-        }
+            resolver.invoke(it, expanded.reversed())
+        }.sum()
     }
 
     fun doTheThing(): Long {
         val inputs = Util.getLinesFromFile("/day9/input.txt")
         val numbers =
             inputs.map { Util.numberRegex.findAll(it).map { it.groupValues }.flatten().map { it.toLong() }.toList() }
-        return numbers.map {
-            var latest = it
-            val expanded = mutableListOf<List<Long>>()
-            while (!latest.all { it == 0L }) {
-                latest = getDifferences(latest)
-                if (latest.isEmpty()) {
-                    latest = listOf(0)
-                }
-                expanded.add(latest)
-            }
+        return expandAndSum(numbers) { originalList, expanded ->
             val increment = expanded
                 .map {
                     it.last()
                 }
-                .reversed()
                 .fold(0L) { acc, l -> acc + l }
-            it.last() + increment
-        }.sum()
+            originalList.last() + increment
+        }
     }
 
     fun doTheOtherThing(): Long {
         val inputs = Util.getLinesFromFile("/day9/input.txt")
         val numbers =
             inputs.map { Util.numberRegex.findAll(it).map { it.groupValues }.flatten().map { it.toLong() }.toList() }
-        return numbers.map {
-            var latest = it
-            val expanded = mutableListOf<List<Long>>()
-            while (!latest.all { it == 0L }) {
-                latest = getDifferences(latest)
-                if (latest.isEmpty()) {
-                    latest = listOf(0)
-                }
-                expanded.add(latest)
-            }
+        return expandAndSum(numbers) { originalList, expanded ->
             val increment = expanded
                 .map {
                     it.first()
                 }
-                .reversed()
                 .fold(0L) { acc, l -> l - acc }
-            it.first() - increment
-        }.sum()
+            originalList.first() - increment
+        }
     }
 }
 
