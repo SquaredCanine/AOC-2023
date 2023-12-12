@@ -1,80 +1,85 @@
 package main.kotlin
 
+import kotlin.system.measureTimeMillis
+
 class Day12 {
 
-    val springRegex = Regex("#+")
+    val possibilities = listOf('.', '#')
 
-    fun String.replaceUnknownWithTheKnown(known: String): String {
-        var product = this
-        known.forEach {
-            product = product.replaceFirst('?', it)
-        }
-        return product
+    data class Entry(val springConditionRow: String, val engineerNotes: List<Int>)
+
+    val cache = mutableMapOf<String, Long>()
+
+    fun String.expandTheSprings(): String {
+        val (row, values) = this.splitForParsing()
+        val engineerNotes = List(5) { values }.flatten()
+        val springs = List(5) { row }
+        return "${springs.joinToString("?")} ${engineerNotes.joinToString(",")}"
     }
 
-    fun String.adheresToTheRules(groups: List<Long>): Boolean {
-        val counts =
-            springRegex.findAll(this).map { it.groupValues }.flatten().map { it.count { it == '#' }.toLong() }.toList()
-        return groups == counts
-    }
-
-    fun String.findAllPossibleArrangements(): Long {
+    fun String.splitForParsing(): Entry {
         val split = this.split(" ")
-        val configuration = split[0]
-        val groups = Util.numberRegex.findAll(split[1]).map { it.groupValues }.flatten().map { it.toLong() }.toList()
-        val wildcards = configuration.count { it == '?' }.toLong()
-        val necessarySprings = groups.sum() - configuration.count { it == '#' }
-        val possibilities = getPossibleStrings(wildcards, necessarySprings)
-        var result: Long = 0L
-        possibilities.filter {
-            configuration
-                .replaceUnknownWithTheKnown(it)
-                .adheresToTheRules(groups)
-        }.forEach {
-            result++
-        }
-        return result
+        return Entry(
+            split[0],
+            Util.numberRegex.findAll(split[1]).map { it.groupValues }.flatten().map { it.toInt() }.toList()
+        )
     }
 
-    fun getPossibleStrings(length: Long, necessarySprings: Long): List<String> {
-        if (length == 0L) return listOf()
-        var stringList = mutableListOf(".", "#")
-        for (i in 1 until length) {
-            stringList = stringList
-                .map {
-                    listOf("$it.", "$it#")
+    fun numberOfSolutions(remainder: String, groups: List<Int>, groupSize: Int = 0): Long =
+        cache.getOrPut("$remainder$groups$groupSize") {
+            if (remainder.isEmpty()) {
+                return if (groups.isEmpty() && groupSize == 0) {
+                    1
+                } else {
+                    0
                 }
-                .flatten()
-                .toMutableList()
+            }
+            val nextCharacter = remainder.first()
+            val nextCharacters = if (nextCharacter == '?') possibilities else listOf(nextCharacter)
+
+            nextCharacters.map {
+                if (it == '#') {
+                    numberOfSolutions(remainder.substring(1), groups, groupSize + 1)
+                } else {
+                    if (groupSize > 0) {
+                        if (groups.isNotEmpty() && groups.first() == groupSize) {
+                            numberOfSolutions(remainder.substring(1), groups.subList(1, groups.size))
+                        } else {
+                            0
+                        }
+                    } else {
+                        numberOfSolutions(remainder.substring(1), groups)
+                    }
+                }
+            }.sum()
         }
-        return stringList.filter { it.count { it == '#' }.toLong() == necessarySprings }
-    }
 
     fun doTheThing(): Long {
         val inputs = Util.getLinesFromFile("/day12/input.txt")
         return inputs.sumOf {
-            it.findAllPossibleArrangements()
+            val entry = it.splitForParsing()
+            numberOfSolutions("${entry.springConditionRow}.", entry.engineerNotes)
         }
     }
 
-    fun String.expandTheSprings(): String {
-        val split = this.split(" ")
-        val yes = (0..4).map { split[1] }.toList()
-        val no = (0..4).map { split[0] }.toList()
-        val result = "${no.joinToString("?")} ${yes.joinToString(",")}"
-        return result
-    }
-
     fun doTheOtherThing(): Long {
-        val inputs = Util.getLinesFromFile("/day12/test.txt")
+        val inputs = Util.getLinesFromFile("/day12/input.txt")
         return inputs.sumOf {
-            it.expandTheSprings().findAllPossibleArrangements()
+            val entry = it.expandTheSprings().splitForParsing()
+            val result = numberOfSolutions("${entry.springConditionRow}.", entry.engineerNotes)
+            result
         }
     }
 }
 
 fun main() {
-    //println(Day12().doTheThing())
-    println(Day12().doTheOtherThing())
+    val part1 = measureTimeMillis {
+        println(Day12().doTheThing())
+    }
+    val part2 = measureTimeMillis {
+        println(Day12().doTheOtherThing())
+    }
+    println("Part 1 in $part1 ms")
+    println("Part 2 in $part2 ms")
 }
 
