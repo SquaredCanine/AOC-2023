@@ -4,7 +4,8 @@ class Day16 {
     data class Movement(val x: Int, val y: Int)
     data class Coordinate(val x: Int, val y: Int)
 
-    val visitedTileMap = mutableMapOf<Pair<Coordinate, Movement>, Int>()
+    val globalTileMap = mutableMapOf<Pair<Coordinate, Movement>, Int>()
+    var temporaryGlobalMap = mutableMapOf<Pair<Coordinate, Movement>, Int>()
 
     fun getInput(): List<String> {
         return Util.getLinesFromFile("/day16/input.txt")
@@ -75,7 +76,8 @@ class Day16 {
     fun takeStep(
         currentLocation: Coordinate,
         movement: Movement,
-        contraptionLayout: List<String>
+        contraptionLayout: List<String>,
+        visitedTileMap: MutableMap<Pair<Coordinate, Movement>, Int> = globalTileMap
     ): Int {
         visitedTileMap[Pair(currentLocation, movement)] =
             visitedTileMap.getOrDefault(Pair(currentLocation, movement), 0) + 1
@@ -84,21 +86,29 @@ class Day16 {
         //is Valid Location?
         return if (nextCoordinate.isValid(contraptionLayout)) {
             val movements = contraptionLayout[nextCoordinate.y][nextCoordinate.x].alterMovement(movement)
-            movements.sumOf {
-                takeStep(nextCoordinate, it, contraptionLayout)
+            if (movements.size == 2) {
+                takeStep(nextCoordinate, movements.last(), contraptionLayout, visitedTileMap) +
+                        takeStep(nextCoordinate, movements.first(), contraptionLayout, visitedTileMap)
+            } else {
+                takeStep(nextCoordinate, movements.first(), contraptionLayout, visitedTileMap)
             }
         } else {
             0
         }
     }
 
-    fun printTheMap(input: List<String>) {
+    fun MutableMap<Pair<Coordinate, Movement>, Int>.printTheMap(input: List<String>) {
         val map = input.map { ".".repeat(it.length) }.toMutableList()
-        visitedTileMap.entries.forEach { (coor, count) ->
+        this.entries.forEach { (coor, count) ->
             map[coor.first.y] = map[coor.first.y].replaceRange(coor.first.x, coor.first.x + 1, "$count")
         }
         map.forEach { println(it) }
     }
+
+    val MutableMap<Pair<Coordinate, Movement>, Int>.score: Long
+        get() {
+            return this.keys.groupBy { it.first }.count().toLong()
+        }
 
     fun doTheThing(): Long {
         val input = getInput()
@@ -108,19 +118,52 @@ class Day16 {
             }
             println(result)
         } catch (error: StackOverflowError) {
-            printTheMap(input)
-            System.exit(0)
+            globalTileMap.printTheMap(input)
+            println(globalTileMap.score)
+            System.exit(-10)
         }
-        printTheMap(input)
-        return visitedTileMap.keys.groupBy { it.first }.count().toLong()
+        globalTileMap.printTheMap(input)
+        return globalTileMap.score
     }
 
     fun doTheOtherThing(): Long {
-        return 0L
+        val input = getInput()
+        var max = -1L
+        try {
+            input.forEachIndexed { indexY, entry ->
+                listOf(0, entry.length - 1).forEach { startX ->
+                    val movX = if (startX == 0) 1 else -1
+                    input[indexY][startX].alterMovement(Movement(movX, 0)).forEach {
+                        temporaryGlobalMap = mutableMapOf()
+                        takeStep(Coordinate(indexY, startX), it, input, temporaryGlobalMap)
+                        if (temporaryGlobalMap.score > max) max = temporaryGlobalMap.score
+                    }
+                }
+            }
+            input[0].forEachIndexed { indexX, str ->
+                listOf(0, input.size - 1).forEach { startY ->
+                    val movY = if (startY == 0) 1 else -1
+                    input[startY][indexX].alterMovement(Movement(0, movY)).forEach {
+                        temporaryGlobalMap = mutableMapOf()
+                        takeStep(Coordinate(startY, indexX), it, input, temporaryGlobalMap)
+                        if (temporaryGlobalMap.score > max) max = temporaryGlobalMap.score
+                    }
+                }
+            }
+        } catch (error: StackOverflowError) {
+            temporaryGlobalMap.printTheMap(input)
+            println(temporaryGlobalMap.score)
+            println(max)
+            System.exit(-10)
+        }
+        temporaryGlobalMap.printTheMap(input)
+        return max
     }
 }
 
 fun main() {
-    println(Day16().doTheThing())
-    println(Day16().doTheOtherThing())
+    val asdf = Day16()
+    println(asdf.doTheThing())
+    println("===========================================================================================")
+    println(asdf.doTheOtherThing())
 }
