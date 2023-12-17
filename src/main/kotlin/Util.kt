@@ -2,6 +2,8 @@ package main.kotlin
 
 class Util {
 
+    data class Coordinate(val x: Int, val y: Int)
+
     companion object {
         val numberRegex = Regex("-*\\d+")
 
@@ -19,6 +21,11 @@ class Util {
             }.map {
                 it.joinToString("")
             }
+        }
+
+        fun <T> Coordinate.isValid(layout: List<List<T>>): Boolean {
+            return this.x in layout[0].indices &&
+                    this.y in layout.indices
         }
     }
 }
