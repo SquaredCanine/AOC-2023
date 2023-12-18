@@ -1,6 +1,8 @@
 package main.kotlin
 
 import kotlin.math.floor
+import kotlin.system.measureTimeMillis
+import kotlin.time.measureTime
 
 class Day18 {
 
@@ -11,13 +13,13 @@ class Day18 {
 
     fun calculateCubicMeters(nodes: List<Coordinate>, edge: Long): Long {
         val combinations = nodes.zipWithNext()
-        val result = combinations.fold(0.0) { acc, pair ->
+        val result = combinations.fold(0L) { acc, pair ->
             acc + (pair.first.x * pair.second.y) - (pair.first.y * pair.second.x)
         }
-        val interiorArea = floor((result / 2L)).toLong() - (edge / 2L) + 1
+        val interiorArea = (result / 2L) - (edge / 2L) + 1
         return interiorArea + edge
     }
-    
+
     fun part2(): Long {
         val input = getInput2()
         val nodes = mutableListOf<Coordinate>()
@@ -87,7 +89,16 @@ class Day18 {
 }
 
 fun main() {
-    println("Part1: " + Day18().part1())
+    val day18 = Day18()
+    var resultPart1: Long
+    var resultPart2: Long
+    val timePart1 = measureTimeMillis {
+        resultPart1 = day18.part1()
+    }
+    val timePart2 = measureTimeMillis {
+        resultPart2 = day18.part2()
+    }
+    println("Part1(${timePart1}ms): " + resultPart1)
     println("=================")
-    println("Part2: " + Day18().part2())
+    println("Part2(${timePart2}ms): " + resultPart2)
 }
