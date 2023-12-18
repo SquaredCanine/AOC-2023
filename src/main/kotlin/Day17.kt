@@ -221,7 +221,7 @@ class Day17 {
             this == it.coordinate
         }
     }
-    
+
     fun part2(): Int {
         return aStarGarbage({ getAvailableMovesUltra()}) {
              it.runLength > 2 && this == it.coordinate
