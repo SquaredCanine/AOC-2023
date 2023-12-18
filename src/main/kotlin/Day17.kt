@@ -1,134 +1,231 @@
 package main.kotlin
 
+import main.kotlin.Util.Companion.isValid
 import main.kotlin.Util.Coordinate
+import java.util.*
 import kotlin.math.abs
 
 class Day17 {
 
-    data class NodeA(val coordinate: Coordinate, val parent: NodeA?, val f: Int, val g: Int, val h: Int)
-    data class NodeD(val coordinate: Coordinate, val parent: NodeD?)
+    fun NodeA.getDirection(nextCoordinate: Coordinate): Int {
+        val movement = Coordinate(
+            this.coordinate.x - nextCoordinate.x,
+            this.coordinate.y - nextCoordinate.y
+        )
+        return when {
+            movement.x == -1 -> {
+                0
+            }
 
-    fun Coordinate.getPreviousSteps(map: MutableMap<Coordinate, Coordinate?>): List<Coordinate> {
-        val coordinates = mutableListOf<Coordinate>()
-        var current = this
-        (0..2).forEach {
-            val new = map[current]
-            if (new != null) {
-                current = new
-                coordinates.add(current)
+            movement.x == 1 -> {
+                1
+            }
+
+            movement.y == -1 -> {
+                2
+            }
+
+            else -> {
+                3
             }
         }
-        return coordinates
     }
 
-    fun List<Coordinate>.getNextCoordinates(queue: List<Coordinate>, current: Coordinate): List<Coordinate> {
-        val coordinateList = mutableListOf<Coordinate>()
-        if (this.isEmpty()) {
-            coordinateList.addAll(
+    fun NodeA.getAvailableMoves(): List<Coordinate> {
+        val coordinates = mutableListOf<Coordinate>()
+        if (this.parent != null) {
+            val xMovement = this.coordinate.x - this.parent.coordinate.x
+            // Left, Right, Up or Down
+            if (xMovement != 0) {
+                coordinates.addAll(
+                    listOf(
+                        Coordinate(this.coordinate.x, this.coordinate.y + 1),
+                        Coordinate(this.coordinate.x, this.coordinate.y - 1)
+                    )
+                )
+            } else {
+                coordinates.addAll(
+                    listOf(
+                        Coordinate(this.coordinate.x + 1, this.coordinate.y),
+                        Coordinate(this.coordinate.x - 1, this.coordinate.y)
+                    )
+                )
+            }
+            // Can move forward?
+            val threeParentsBack = this.parent.parent?.parent
+            if (threeParentsBack != null) {
+                val wayBackWhen = threeParentsBack.coordinate
+                val translatedCoordinate = Coordinate(
+                    abs(this.coordinate.x - wayBackWhen.x),
+                    abs(this.coordinate.y - wayBackWhen.y)
+                )
+                if (translatedCoordinate.x != 3 && translatedCoordinate.y != 3) {
+                    if (xMovement != 0) {
+                        coordinates.add(Coordinate(this.coordinate.x + xMovement, this.coordinate.y))
+                    } else {
+                        val yMovement = this.coordinate.y - this.parent.coordinate.y
+                        coordinates.add(Coordinate(this.coordinate.x, this.coordinate.y + yMovement))
+                    }
+                }
+            } else {
+                if (xMovement != 0) {
+                    coordinates.add(Coordinate(this.coordinate.x + xMovement, this.coordinate.y))
+                } else {
+                    val yMovement = this.coordinate.y - this.parent.coordinate.y
+                    coordinates.add(Coordinate(this.coordinate.x, this.coordinate.y + yMovement))
+                }
+            }
+        } else {
+            coordinates.addAll(
                 listOf(
                     Coordinate(0, 1),
                     Coordinate(1, 0)
                 )
             )
-        } else {
-            val xMovement = current.x - this.first().x
-            val yMovement = current.y - this.first().y
-
-            if (xMovement != 0) {
-                coordinateList.addAll(
-                    listOf(
-                        Coordinate(current.x, current.y + 1),
-                        Coordinate(current.x, current.y - 1)
-                    )
-                )
-            } else {
-                coordinateList.addAll(
-                    listOf(
-                        Coordinate(current.x + 1, current.y),
-                        Coordinate(current.x - 1, current.y)
-                    )
-                )
-            }
-
-            if (this.size >= 2) {
-                val diagonalCoord = Coordinate(
-                    current.x - this[1].x,
-                    current.y - this[1].y
-                )
-                if (abs(diagonalCoord.x) == 1 && abs(diagonalCoord.y) == 1) {
-                    println("Diagonal move detected!")
-                    val possibilities = listOf(
-                        Coordinate(
-                            this[1].x + diagonalCoord.x,
-                            this[1].y
-                        ),
-                        Coordinate(
-                            this[1].x,
-                            this[1].y + diagonalCoord.y
-                        )
-                    )
-                    println(possibilities)
-                    coordinateList.removeAll(possibilities)
-                }
-            }
-
-            // Can move forward?
-            val wayBackWhen = this.last()
-            val translatedCoordinate = Coordinate(
-                abs(current.x - wayBackWhen.x),
-                abs(current.y - wayBackWhen.y)
-            )
-            if (translatedCoordinate.x != 3 && translatedCoordinate.y != 3) {
-                if (xMovement != 0) {
-                    coordinateList.add(Coordinate(current.x + xMovement, current.y))
-                } else {
-                    coordinateList.add(Coordinate(current.x, current.y + yMovement))
-                }
-            }
-
         }
-        return coordinateList.filter { queue.contains(it) }
+        return coordinates
+    }
+
+    fun NodeA.getAvailableMovesBasic(): List<Coordinate> {
+        val (x, y) = this.coordinate
+        val coordinates = mutableListOf<Coordinate>()
+        when(this.direction) {
+            -1 -> {
+                return listOf(
+                    Coordinate(0, 1),
+                    Coordinate(1, 0)
+                )
+            }
+            0, 1 -> {
+                coordinates.addAll(
+                    listOf(
+                        Coordinate(x, y + 1),
+                        Coordinate(x, y - 1)
+                    )
+                )
+            }
+            else -> {
+                coordinates.addAll(
+                    listOf(
+                        Coordinate(x + 1, y),
+                        Coordinate(x - 1, y)
+                    )
+                )
+            }
+        }
+        if (this.runLength != 2) {
+            coordinates.add(when (this.direction) {
+                0 -> { Coordinate(x + 1, y)}
+                1 -> { Coordinate(x - 1, y)}
+                2 -> { Coordinate(x, y + 1)}
+                else -> { Coordinate(x, y - 1)}
+            })
+        }
+        return coordinates
+    }
+
+    fun calculateHeuristic(validCoordinate: Coordinate, map: List<List<Int>>): Int {
+        return ((map.size - 1) - validCoordinate.y)  +
+                (map[0].size - 1) - validCoordinate.x
+    }
+
+    data class NodeA(
+        val coordinate: Coordinate,
+        val parent: NodeA?,
+        val f: Int, val g: Int, val h: Int,
+        val direction: Int,
+        val runLength: Int
+    ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other?.javaClass != javaClass) return false
+            other as NodeA
+            return this.coordinate == other.coordinate &&
+                    this.direction == other.direction &&
+                    this.runLength == other.runLength
+        }
     }
 
     fun part1(): Int {
+        return aStarGarbage()
+    }
+
+    fun aStarGarbage(): Int {
+        val seenBefore: MutableMap<String, Int> = mutableMapOf()
         val input = getInput()
-        val queue = input.mapIndexed { yIndex, numbers ->
-            numbers.mapIndexed { xIndex, number ->
-                Coordinate(xIndex, yIndex)
-            }
-        }.flatten().toMutableList()
+        val openQueue = PriorityQueue<NodeA> { node1, node2 ->
+            node1.f - node2.f
+        }
 
-        val distance = queue.associateWith { coor ->
-            Integer.MAX_VALUE
-        }.toMutableMap()
-
-        val previous: MutableMap<Coordinate, Coordinate?> = queue.associateWith { coor -> null }.toMutableMap()
-        val startPoint = Coordinate(0, 0)
-        val stopPoint = Coordinate(input[0].size - 1, input.size - 1)
-        distance[startPoint] = 0
-        while (queue.isNotEmpty()) {
-            val current = queue.minBy { distance[it] ?: Integer.MAX_VALUE }
-            queue.remove(current)
-            if (current == stopPoint) {
-                var nextNode: Coordinate? = current
-                var sum = 0
-                val outputPrint = Array(input.size) { y -> Array(input[0].size) { x -> input[y][x].toString() } }
-                while (nextNode != null) {
-                    sum += input[nextNode.y][nextNode.x]
-                    outputPrint[nextNode.y][nextNode.x] = "#"
-                    nextNode = previous[nextNode]
+        openQueue.offer(
+            NodeA(Coordinate(0, 0), null, 0, 0, 0, -1, -1)
+        )
+        val closedList = mutableListOf<NodeA>()
+        val goalCoordinate = Coordinate(input[0].size - 1, input.size - 1)
+        var iterations = 0
+        while (openQueue.isNotEmpty()) {
+            if (iterations % 100_000 == 0) {
+                println("iterations $iterations")
+                val newThing = Array(input.size) { y -> Array(input[0].size) { "" } }
+                closedList.forEach { newThing[it.coordinate.y][it.coordinate.x] = "X" }
+                newThing.forEach {
+                    val stringToPrint = it.joinToString("")
+                    if (stringToPrint.isNotBlank()) {
+                        println(stringToPrint)
+                    }
                 }
-                outputPrint.forEach { println(it.joinToString("")) }
-                return sum
             }
-            current
-                .getPreviousSteps(previous)
-                .getNextCoordinates(queue, current)
-                .forEach { neigh ->
-                    val alt = distance[current]!! + input[neigh.y][neigh.x]
-                    if (alt < distance[neigh]!!) {
-                        distance[neigh] = alt
-                        previous[neigh] = current
+            val currentNode = openQueue.poll()
+            closedList.add(currentNode)
+
+            //Goal found
+            if (currentNode.coordinate == goalCoordinate) {
+                val path = mutableListOf<NodeA>()
+                var current: NodeA? = currentNode
+                while (current != null) {
+                    path.add(current)
+                    current = current.parent
+                }
+                path.removeLast()
+                val newThing = Array(input.size) { y -> Array(input[0].size) { x -> input[y][x].toString() } }
+                path.forEach { newThing[it.coordinate.y][it.coordinate.x] = "#" }
+                newThing.forEach { println(it.joinToString("")) }
+                println("iterations $iterations")
+                return path.sumOf { input[it.coordinate.y][it.coordinate.x] }
+            }
+
+            currentNode
+                //Get possible moves
+                .getAvailableMovesBasic()
+                // Filter those for validity
+                .filter { newCoordinate ->
+                    newCoordinate.isValid(input)
+                }
+                // Create nodes and calculate f, g and h
+                .mapNotNull { validCoordinate ->
+                    val direction = currentNode.getDirection(validCoordinate)
+                    val runLength = if (direction == currentNode.direction) currentNode.runLength + 1 else 0
+                    val key = "$validCoordinate$direction$runLength"
+                    if (seenBefore[key] == null) {
+                        seenBefore[key] = 0
+                        val g = currentNode.g + input[validCoordinate.y][validCoordinate.x]
+                        val h = calculateHeuristic(validCoordinate, input)
+                        NodeA(validCoordinate, currentNode, g + h, g, h, direction, runLength)
+                    } else {
+                        seenBefore[key] = seenBefore[key]!! + 1
+                        null
+                    }
+                }
+                // Add them to the pile if new or lowest value
+                .forEach {
+                    iterations++
+                    val similarNodes = openQueue.filter { openNode ->
+                        it.coordinate == openNode.coordinate &&
+                                it.direction == openNode.direction &&
+                                it.runLength == openNode.runLength
+                    }
+                    if (similarNodes.isEmpty() || it.g < similarNodes.minBy { it.g }.g) {
+                        openQueue.add(it)
                     }
                 }
         }
