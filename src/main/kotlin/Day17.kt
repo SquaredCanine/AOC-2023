@@ -31,57 +31,43 @@ class Day17 {
         }
     }
 
-    fun NodeA.getAvailableMoves(): List<Coordinate> {
-        val coordinates = mutableListOf<Coordinate>()
-        if (this.parent != null) {
-            val xMovement = this.coordinate.x - this.parent.coordinate.x
-            // Left, Right, Up or Down
-            if (xMovement != 0) {
-                coordinates.addAll(
-                    listOf(
-                        Coordinate(this.coordinate.x, this.coordinate.y + 1),
-                        Coordinate(this.coordinate.x, this.coordinate.y - 1)
-                    )
-                )
-            } else {
-                coordinates.addAll(
-                    listOf(
-                        Coordinate(this.coordinate.x + 1, this.coordinate.y),
-                        Coordinate(this.coordinate.x - 1, this.coordinate.y)
-                    )
-                )
-            }
-            // Can move forward?
-            val threeParentsBack = this.parent.parent?.parent
-            if (threeParentsBack != null) {
-                val wayBackWhen = threeParentsBack.coordinate
-                val translatedCoordinate = Coordinate(
-                    abs(this.coordinate.x - wayBackWhen.x),
-                    abs(this.coordinate.y - wayBackWhen.y)
-                )
-                if (translatedCoordinate.x != 3 && translatedCoordinate.y != 3) {
-                    if (xMovement != 0) {
-                        coordinates.add(Coordinate(this.coordinate.x + xMovement, this.coordinate.y))
-                    } else {
-                        val yMovement = this.coordinate.y - this.parent.coordinate.y
-                        coordinates.add(Coordinate(this.coordinate.x, this.coordinate.y + yMovement))
-                    }
-                }
-            } else {
-                if (xMovement != 0) {
-                    coordinates.add(Coordinate(this.coordinate.x + xMovement, this.coordinate.y))
-                } else {
-                    val yMovement = this.coordinate.y - this.parent.coordinate.y
-                    coordinates.add(Coordinate(this.coordinate.x, this.coordinate.y + yMovement))
-                }
-            }
-        } else {
-            coordinates.addAll(
-                listOf(
-                    Coordinate(0, 1),
-                    Coordinate(1, 0)
-                )
+    fun NodeA.getAvailableMovesUltra(): List<Coordinate> {
+        if (this.direction == -1) {
+            return listOf(
+                Coordinate(0, 1),
+                Coordinate(1, 0)
             )
+        }
+        val (x, y) = this.coordinate
+        val coordinates = mutableListOf<Coordinate>()
+        if (this.runLength <= 8) {
+            coordinates.add(when (this.direction) {
+                0 -> { Coordinate(x + 1, y)}
+                1 -> { Coordinate(x - 1, y)}
+                2 -> { Coordinate(x, y + 1)}
+                else -> { Coordinate(x, y - 1)}
+            })
+        }
+        if (this.runLength > 2) {
+            when (this.direction) {
+                0, 1 -> {
+                    coordinates.addAll(
+                        listOf(
+                            Coordinate(x, y + 1),
+                            Coordinate(x, y - 1)
+                        )
+                    )
+                }
+
+                else -> {
+                    coordinates.addAll(
+                        listOf(
+                            Coordinate(x + 1, y),
+                            Coordinate(x - 1, y)
+                        )
+                    )
+                }
+            }
         }
         return coordinates
     }
@@ -144,13 +130,11 @@ class Day17 {
                     this.direction == other.direction &&
                     this.runLength == other.runLength
         }
+
+
     }
 
-    fun part1(): Int {
-        return aStarGarbage()
-    }
-
-    fun aStarGarbage(): Int {
+    fun aStarGarbage(moveSelector: NodeA.() -> List<Coordinate>, stopCondition: Coordinate.(NodeA) -> Boolean): Int {
         val seenBefore: MutableMap<String, Int> = mutableMapOf()
         val input = getInput()
         val openQueue = PriorityQueue<NodeA> { node1, node2 ->
@@ -179,7 +163,7 @@ class Day17 {
             closedList.add(currentNode)
 
             //Goal found
-            if (currentNode.coordinate == goalCoordinate) {
+            if (goalCoordinate.stopCondition(currentNode)) {
                 val path = mutableListOf<NodeA>()
                 var current: NodeA? = currentNode
                 while (current != null) {
@@ -196,7 +180,7 @@ class Day17 {
 
             currentNode
                 //Get possible moves
-                .getAvailableMovesBasic()
+                .moveSelector()
                 // Filter those for validity
                 .filter { newCoordinate ->
                     newCoordinate.isValid(input)
@@ -232,8 +216,16 @@ class Day17 {
         return -1
     }
 
+    fun part1(): Int {
+        return aStarGarbage({ getAvailableMovesBasic()}) {
+            this == it.coordinate
+        }
+    }
+    
     fun part2(): Int {
-        return 0
+        return aStarGarbage({ getAvailableMovesUltra()}) {
+             it.runLength > 2 && this == it.coordinate
+        }
     }
 
     fun getInput(): List<List<Int>> {
